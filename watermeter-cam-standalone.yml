@@ -1,5 +1,6 @@
 # For Utility Meter Digitizer
 # https://github.com/laurynas/utility-meter-digitizer
+# Set digitiser url via http://watermeter-cam-standalone.local
 
 esphome:
   name: watermeter-cam-standalone
