@@ -20,3 +20,5 @@ Use with [Utility Meter Digitizer for Home Assistant](https://github.com/lauryna
 [watermeter-cam-standalone.yml](watermeter-cam-standalone.yml)
 
 Use with [Utility Meter Digitizer](https://github.com/laurynas/utility-meter-digitizer).
+
+Set digitiser url via http://watermeter-cam-standalone.local
