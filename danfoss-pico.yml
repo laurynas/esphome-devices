@@ -1,3 +1,8 @@
+# Danfoss FC200 integration via Modbus using Raspberry PI Pico + SP3485 Transceiver
+# https://files.danfoss.com/download/Drives/MG20O622.pdf
+# https://www.waveshare.com/pico-2ch-rs485.htm
+# https://www.anodas.lt/2-kanalu-rs485-2-kanalu-uart-rs485-modulis-sp3485-skirtas-raspberry-pi-pico-waveshare-19717
+
 esphome:
   name: "danfoss-pico"
   friendly_name: "danfoss-pico"
