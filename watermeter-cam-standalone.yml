@@ -1,7 +1,3 @@
-# For Utility Meter Digitizer
-# https://github.com/laurynas/utility-meter-digitizer
-# Set digitiser url via http://watermeter-cam-standalone.local
-
 esphome:
   name: watermeter-cam-standalone
   friendly_name: watermeter-cam-standalone
@@ -25,12 +21,18 @@ esp32:
 logger:
 
 # Enable Home Assistant API
-# api:
-#   encryption:
-#     key: "xxx"
+api:
+  encryption:
+    key: "XXXXX"
+  services: 
+    - service: set_max_increase
+      variables: 
+        value: float
+      then:
+        - logger.log: "ok"
 
-# ota:
-#   password: "xxx"
+ota:
+  password: "XXXXX"
 
 wifi:
   ssid: !secret wifi_ssid
@@ -38,10 +40,19 @@ wifi:
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
-    ssid: "Watermeter-Cam-Standalone Fallback"
-    password: "xxx"
+    ssid: "Watermeter-Cam Fallback"
+    password: "XXXXX"
 
 captive_portal:
+
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: Europe/Vilnius
+    servers:
+     - 0.pool.ntp.org
+     - 1.pool.ntp.org
+     - 2.pool.ntp.org
 
 # Just loading dependencies, will issue request manually via HTTPClient
 http_request:
@@ -49,7 +60,13 @@ http_request:
 globals:
   - id: image_data
     type: esp32_camera::CameraImageData
-
+  - id: stored_value
+    type: float
+    restore_value: true
+  - id: updated_at
+    type: time_t
+    restore_value: true
+    
 esp32_camera:
   name: "Camera"
   id: camera
@@ -88,6 +105,29 @@ esp32_camera_web_server:
 web_server:
   port: 80
 
+sensor:
+  - platform: template
+    id: value
+    name: "Value"
+    lambda: |-
+      return id(stored_value);
+    device_class: water
+    state_class: total_increasing
+    unit_of_measurement: "m³"
+
+text_sensor:
+  - platform: template
+    id: status
+    name: "Status"
+  - platform: template
+    name: "Value Last Update"
+    id: value_last_update
+    lambda: |-
+      char str[20];
+      time_t curr_time = id(updated_at);
+      strftime(str, sizeof(str), "%Y-%m-%d %H:%M:%S", localtime(&curr_time));
+      return std::string(str);
+
 text:
   - platform: template
     id: digitizer_url
@@ -98,14 +138,15 @@ text:
 
 number:
   - platform: template
-    id: digitizer_interval
-    name: "Digitizer interval (seconds)"
+    id: reading_interval
+    name: "Reading interval (seconds)"
     min_value: 10
     max_value: 3600
     step: 10
     initial_value: 60
     optimistic: true
     restore_value: true
+    mode: box
 
 interval:
   - interval: 1sec
@@ -147,8 +188,21 @@ script:
           }
 
           int http_code = http.POST(id(image_data).data, id(image_data).length);
+          std::string http_response = http.getString().c_str();
+      
+          ESP_LOGD("HTTPClient", "completed; URL: %s; Code: %d, Result: %s", url.c_str(), http_code, http_response.c_str());
 
-          ESP_LOGD("HTTPClient", "completed; URL: %s; Code: %d", url.c_str(), http_code);
+          if (http_code == 200) {
+            json::parse_json(http_response, [](JsonObject root) {
+              id(stored_value) = root["value"];
+              id(updated_at) = id(sntp_time).now().timestamp;
+              id(value).update();
+              id(value_last_update).update();
+              id(status).publish_state("OK");
+            });  
+          } else {
+            id(status).publish_state("Error: " + http_response);
+          }
 
           http.end();
       - lambda: id(image_data) = {};
@@ -156,4 +210,4 @@ script:
           id: onboard_led
           transition_length: 0s
       - delay: !lambda |-
-          return id(digitizer_interval).state * 1000;
+          return id(reading_interval).state * 1000;
