@@ -24,12 +24,6 @@ logger:
 api:
   encryption:
     key: "XXXXX"
-  services: 
-    - service: set_max_increase
-      variables: 
-        value: float
-      then:
-        - logger.log: "ok"
 
 ota:
   password: "XXXXX"
